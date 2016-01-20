@@ -87,8 +87,10 @@ class Button{
 			
 		} else {
 			if(isOver || isSelected){
-				image(img, pos.x + img.width/12, pos.y + img.height/12, img.width/3, img.height/3);
-				image(circulo, pos.x, pos.y, circulo.width/2, circulo.height/2);
+				stroke(255);
+				fill(0);
+  				ellipse(pos.x + 30, pos.y + 35, 76, 76);
+  				image(img, pos.x + img.width/12, pos.y + img.height/12, img.width/3, img.height/3);
 			}else{
 				image(img, pos.x, pos.y, img.width/2, img.height/2);
 			}

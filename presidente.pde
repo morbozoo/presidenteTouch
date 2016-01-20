@@ -6,6 +6,8 @@
  
 import oscP5.*;
 import netP5.*;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import processing.simpletouch.*;
   
 OscP5 oscP5;
@@ -24,6 +26,13 @@ Button onOff        = new Button();
 
 Slider sliderBright = new Slider();
 Slider sliderSpeed  = new Slider();
+
+boolean jetsonIsOn  = false;
+
+String projectorOn  = "python on.py";
+String projectorOff = "python off.py";
+String returnedValues;
+File workingDir = new File("/usr/local/lib/processing-3.0.1/modes/java/examples/Topics/GUI/presidente/data");
 
 void setup() {
   fullScreen();
@@ -50,18 +59,18 @@ void setup() {
   for (int i = 0; i < organicos.length; i++) {
     organicos[i] = new Button();
     organicos[i].setImg("mood_" + (i+5) + ".png");
-    organicos[i].setPos(new PVector(420 + i * (organicos[i].sizeW + 35), 240));
+    organicos[i].setPos(new PVector(420 + i * (organicos[i].sizeW + 35), 350));
 
     triangulos[i] = new Button();
     triangulos[i].setImg("mood_" + (i+1) + ".png");
-    triangulos[i].setPos(new PVector(420 + i * (triangulos[i].sizeW + 35), 350));
+    triangulos[i].setPos(new PVector(420 + i * (triangulos[i].sizeW + 35), 240));
   }
 
   sliderBright.setup(new PVector(450, 80), 300, 38);
   sliderSpeed.setup(new PVector(450, 180), 300, 30);
 
   /* start oscP5, listening for incoming messages at port 12000 */
-  oscP5 = new OscP5(this,12000);
+  oscP5 = new OscP5(this,12345);
   
   /* myRemoteLocation is a NetAddress. a NetAddress takes 2 parameters,
    * an ip address and a port number. myRemoteLocation is used as parameter in
@@ -70,7 +79,7 @@ void setup() {
    * and the port of the remote location address are the same, hence you will
    * send messages back to this sketch.
    */
-  myRemoteLocation = new NetAddress("192.168.0.13",12345);
+  myRemoteLocation = new NetAddress("192.168.1.103",12345);
 }
 
 
@@ -176,17 +185,22 @@ void sendMessage(int deCual, float cual){
     myMessage.add(cual + 4);
     oscP5.send(myMessage, myRemoteLocation);
   }else if (deCual == 2) {
-    onOff.on = !onOff.on;
     if (cual == 2) {
       myMessage = new OscMessage("on");
       oscP5.send(myMessage, myRemoteLocation);
-      for (int i = 0; i < organicos.length; i++) {
-        organicos[i].deselect();
-        triangulos[i].deselect();
+      if (jetsonIsOn) {
+        onOff.on = !onOff.on;
+        for (int i = 0; i < organicos.length; i++) {
+          organicos[i].deselect();
+          triangulos[i].deselect();
+        }
       }
+      
     }else{
       myMessage = new OscMessage("off");
       oscP5.send(myMessage, myRemoteLocation);
+      onOff.on = !onOff.on;
+      projector(projectorOff);
     }
   }else if (deCual == 3) {
     myMessage = new OscMessage("slider1");
@@ -202,7 +216,55 @@ void sendMessage(int deCual, float cual){
 /* incoming osc message are forwarded to the oscEvent method. */
 void oscEvent(OscMessage theOscMessage) {
   /* print the address pattern and the typetag of the received OscMessage */
+  if (theOscMessage.checkAddrPattern("imOn")==true) {
+    print("### true");
+    jetsonIsOn = true;
+  }else if (theOscMessage.checkAddrPattern("imOff")==true) {
+    jetsonIsOn = false;
+  }
   print("### received an osc message.");
   print(" addrpattern: "+theOscMessage.addrPattern());
   println(" typetag: "+theOscMessage.typetag());
+}
+
+void projector(String commandToRun){
+    try {
+
+    // complicated!  basically, we have to load the exec command within Java's Runtime
+    // exec asks for 1. command to run, 2. null which essentially tells Processing to 
+    // inherit the environment settings from the current setup (I am a bit confused on
+    // this so it seems best to leave it), and 3. location to work (full path is best)
+    Process p = Runtime.getRuntime().exec(commandToRun, null, workingDir);
+
+    // variable to check if we've received confirmation of the command
+    int i = p.waitFor();
+
+    // if we have an output, print to screen
+    if (i == 0) {
+
+      // BufferedReader used to get values back from the command
+      BufferedReader stdInput = new BufferedReader(new InputStreamReader(p.getInputStream()));
+
+      // read the output from the command
+      while ( (returnedValues = stdInput.readLine ()) != null) {
+        println(returnedValues);
+      }
+    }
+
+    // if there are any error messages but we can still get an output, they print here
+    else {
+      BufferedReader stdErr = new BufferedReader(new InputStreamReader(p.getErrorStream()));
+
+      // if something is returned (ie: not null) print the result
+      while ( (returnedValues = stdErr.readLine ()) != null) {
+        println(returnedValues);
+      }
+    }
+  }
+
+  // if there is an error, let us know
+  catch (Exception e) {
+    println("Error running command!");  
+    println(e);
+  }
 }
