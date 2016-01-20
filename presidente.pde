@@ -42,9 +42,11 @@ void setup() {
   escultura     = loadImage("Escultura_on.png");
   signature     = loadImage("signature.png");
   brightness    = loadImage("brightness.png");
+  speed         = loadImage("speed.png");
 
-  onOff.setImg("on-off_red.png");
+  onOff.setImg("On-off.png");
   onOff.setPos(new PVector(40, 40));
+  onOff.isOnOff = true;
   for (int i = 0; i < organicos.length; i++) {
     organicos[i] = new Button();
     organicos[i].setImg("mood_" + (i+5) + ".png");
@@ -55,8 +57,8 @@ void setup() {
     triangulos[i].setPos(new PVector(420 + i * (triangulos[i].sizeW + 35), 350));
   }
 
-  sliderBright.setup(50, new PVector(500, 80), 200);
-  sliderSpeed.setup(50, new PVector(500, 180), 200);
+  sliderBright.setup(new PVector(450, 80), 300, 38);
+  sliderSpeed.setup(new PVector(450, 180), 300, 30);
 
   /* start oscP5, listening for incoming messages at port 12000 */
   oscP5 = new OscP5(this,12000);
@@ -76,45 +78,58 @@ void draw() {
   noCursor();
   background(0);  
 
-  image(escultura, 90, 10, 280, 460);
-  image(signature, 490, 440);
-  image(brightness, 600, 30);
-  //image(speed, 600, 130);
+  if (onOff.on) {
+    image(escultura, 90, 10, 280, 460);
+    image(signature, 490, 440);
+    image(brightness, 600, 30);
+    image(speed, 600, 130);
 
-  stroke(255);
-  line(500, 80, 700, 80);
-  line(500, 180, 700, 180);
-
-  SimpleTouchEvt touches[] = touchscreen.touches();
-  for (SimpleTouchEvt touch : touches) {
+    SimpleTouchEvt touches[] = touchscreen.touches();
+    for (SimpleTouchEvt touch : touches) {
     // the id value is used to track each touch
     // we use it to assign a unique color
     //fill((touch.id * 100) % 360, 100, 100);
     // x and y are values from 0.0 to 1.0
     //ellipse(width * touch.x, height * touch.y, 100, 100);
-    for (int i = 0; i < organicos.length; i++) {
-      if (organicos[i].over(new PVector(width * touch.x, height * touch.y))) {
-        select(0, i);
-      }else if(triangulos[i].over(new PVector(width * touch.x, height * touch.y))){
-        select(1, i);
+      for (int i = 0; i < organicos.length; i++) {
+        if (organicos[i].over(new PVector(width * touch.x, height * touch.y))) {
+          select(0, i);
+        }else if(triangulos[i].over(new PVector(width * touch.x, height * touch.y))){
+          select(1, i);
+        }
+      }
+      if (onOff.over(new PVector(width * touch.x, height * touch.y)) && !onOff.locked) {
+        onOff.lock();
+        sendMessage(2, 1);
+      }
+      if (sliderBright.over(new PVector(width * touch.x, height * touch.y))) {
+        sendMessage(3, sliderBright.getValor());
+      }
+      if (sliderSpeed.over(new PVector(width * touch.x, height * touch.y))) {
+        sendMessage(4, sliderSpeed.getValor());
       }
     }
-    sliderBright.over(new PVector(width * touch.x, height * touch.y));
-    sliderSpeed.over(new PVector(width * touch.x, height * touch.y));
-    if (onOff.over(new PVector(width * touch.x, height * touch.y))) {
-      
+    onOff.update();
+    onOff.draw();
+    for (int i = 0; i < organicos.length; i++) {
+      organicos[i].draw();
+      triangulos[i].draw();
     }
+    sliderBright.draw();
+    sliderSpeed.draw();  
+  } else{
+    SimpleTouchEvt touches[] = touchscreen.touches();
+    for (SimpleTouchEvt touch : touches) {
+      if (onOff.over(new PVector(width * touch.x, height * touch.y)) && !onOff.locked) {
+        onOff.lock();
+        sendMessage(2, 2);
+      }
+    }
+    onOff.update();
+    onOff.draw();
   }
-
-  onOff.draw();
-  for (int i = 0; i < organicos.length; i++) {
-    organicos[i].draw();
-    triangulos[i].draw();
-  }
-
-  sliderBright.draw();
-  sliderSpeed.draw();
 }
+
 
 void select(int deCual, int selected){
   if (deCual == 0) {
@@ -142,39 +157,39 @@ void select(int deCual, int selected){
   }
 }
 
-void sendMessage(int deCual, int cual){
+void sendMessage(int deCual, float cual){
+  OscMessage myMessage;
   if (deCual == 0) {
-    OscMessage myMessage = new OscMessage("mood");
+    myMessage = new OscMessage("mood");
     myMessage.add(cual);
     oscP5.send(myMessage, myRemoteLocation);
-
-    OscMessage myMessage2 = new OscMessage("slider1");
-    myMessage2.add(100);
-    oscP5.send(myMessage2, myRemoteLocation);
-
-    OscMessage myMessage3 = new OscMessage("slider2");
-    myMessage3.add(100);
-    oscP5.send(myMessage3, myRemoteLocation);
-
-    print("### osc message.");
   }else if (deCual == 1) {
-    OscMessage myMessage = new OscMessage("mood");
+    myMessage = new OscMessage("mood");
     myMessage.add(cual + 4);
     oscP5.send(myMessage, myRemoteLocation);
-    print("### osc message.");
+  }else if (deCual == 2) {
+    onOff.on = !onOff.on;
+    if (cual == 2) {
+      myMessage = new OscMessage("on");
+      oscP5.send(myMessage, myRemoteLocation);
+      for (int i = 0; i < organicos.length; i++) {
+        organicos[i].deselect();
+        triangulos[i].deselect();
+      }
+    }else{
+      myMessage = new OscMessage("off");
+      oscP5.send(myMessage, myRemoteLocation);
+    }
+  }else if (deCual == 3) {
+    myMessage = new OscMessage("slider1");
+    myMessage.add(cual);
+    oscP5.send(myMessage, myRemoteLocation);
+  }else if (deCual == 4) {
+    myMessage = new OscMessage("slider2");
+    myMessage.add(cual);
+    oscP5.send(myMessage, myRemoteLocation);
   }
 }
-
-void mousePressed() {
-  /* in the following different ways of creating osc messages are shown by example */
-  OscMessage myMessage = new OscMessage("/test");
-  
-  myMessage.add(123); /* add an int to the osc message */
-
-  /* send the message */
-  oscP5.send(myMessage, myRemoteLocation); 
-}
-
 
 /* incoming osc message are forwarded to the oscEvent method. */
 void oscEvent(OscMessage theOscMessage) {

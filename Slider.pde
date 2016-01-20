@@ -1,25 +1,32 @@
 class Slider{
-	PVector pos  = new PVector(0, 0);
-	float valor    = 0;
-	float posicion = 0;
-	float diameter = 60;
-	boolean isOver = false;
-	boolean isMov = false;
-	float longitud;
-	PImage icono;
+	PVector pos 	= new PVector(0, 0);
+	float ancho		= 300;
+	float alto		= 38;
+	float posicion 	= pos.x + ancho/2;
+	float valor 	= 128;
+	int diameter 	= 70;
+	boolean isOver 	= false;
+	PImage knob;
 	PImage circulo;
+
 
 	Slider(){}
 
-	void setup(float newValor, PVector newPos, float newLongitud){
-		icono 		= loadImage("slider_Knob.png");
-		circulo = loadImage("circulo.png");
-		valor 		= newValor;
+	void setup(PVector newPos, float newAncho, float newAlto){
+		knob 		= loadImage("slider_Knob.png");
+		circulo 	= loadImage("circulo.png");
 		pos 		= newPos;
-		longitud 	= newLongitud;
-		posicion 	= pos.x;
-		pos.y 		= pos.y - 19;
+		ancho 		= newAncho;
+		alto 		= newAlto;
+		posicion 	= pos.x + ancho/2;
+        calculaValor();
 	}
+
+	void calculaValor(){
+		valor = (posicion - pos.x) * (255 / ancho);
+	}
+
+
 
 	void setValor(int newValor){
 		valor = newValor;
@@ -29,37 +36,34 @@ class Slider{
 		return valor;
 	}
 
-	void updatePos(PVector touch){
-		if (isOver && touch.x > pos.x && touch.x < pos.x + longitud) {
-			posicion = touch.x;
-			isMov = true;
+	void updatePos(float touch){
+		if (isOver && touch > pos.x - 15 && touch < pos.x + ancho - 15) {
+			posicion = touch;
+			calculaValor();
 		}
 	}
 
 	void draw(){
-		if (isOver || isMov) {
-			image(circulo, posicion - 45, pos.y - 10, diameter, diameter);
+		stroke(255);
+		line(pos.x, pos.y + alto/2, pos.x + ancho, pos.y + alto/2);
+		if (isOver) {
+			image(circulo, posicion -diameter/2 + alto/2, pos.y + alto/2 - diameter/2, diameter, diameter);
 		}
-		image(icono, posicion - 33 , pos.y);
+		image(knob, posicion, pos.y);
 		isOver = false;
-		isMov = false;
 	}
 
-	void calcularPosicion(){
-		posicion = (longitud / 255.0) * valor;
-	}
-
-	void over(PVector touch){
+	boolean over(PVector touch){
 		float disX = posicion - touch.x;
-  		float disY = pos.y - touch.y;
-  		//ellipse(posicion, pos.y, diameter, diameter);
+  		float disY = pos.y + alto/2 - touch.y;
   		if (sqrt(sq(disX) + sq(disY)) < diameter ) {
 
     		isOver = true;
   		} else {
     		isOver = false;
   		}
-  		updatePos(touch);
+  		updatePos(touch.x);
+  		return isOver;
 	}
 
 }
