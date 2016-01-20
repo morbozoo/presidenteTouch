@@ -26,10 +26,9 @@ class Slider{
 		valor = (posicion - pos.x) * (255 / ancho);
 	}
 
-
-
-	void setValor(int newValor){
+	void setValor(float newValor){
 		valor = newValor;
+		posicion = pos.x + ((valor/255) * ancho);
 	}
 
 	float getValor(){

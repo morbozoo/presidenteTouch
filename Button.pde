@@ -7,6 +7,8 @@ class Button{
 	boolean isSelected 	= false;
 	boolean on			= false;
 	boolean isOnOff		= false;
+	float bright		= 128.0f;
+	float speed 		= 128.0f;
 	int cont			= 0;
 	PImage off;
 	PImage img;
@@ -20,6 +22,19 @@ class Button{
 		img 	= loadImage(newImg);
 		circulo = loadImage("circulo.png");
 		off  	= loadImage("on-off_red.png");
+	}
+
+	void setPresets(float newBright, float newSpeed){
+		bright = newBright;
+		speed = newSpeed;
+	}
+
+	float getBright(){
+		return bright;
+	}
+
+	float getSpeed(){
+		return speed;
 	}
 
 	void setPos(PVector newPos){

@@ -137,6 +137,10 @@ void select(int deCual, int selected){
       if (i == selected) {
         sendMessage(0,i);
         organicos[i].select();
+        sendMessage(3, organicos[i].getBright());
+        sliderBright.setValor(organicos[i].getBright());
+        sendMessage(4, organicos[i].getSpeed());
+        sliderSpeed.setValor(organicos[i].getSpeed());
         triangulos[i].deselect();
       }else{
         organicos[i].deselect();
@@ -148,6 +152,10 @@ void select(int deCual, int selected){
       if (i == selected) {
         sendMessage(1,i);
         triangulos[i].select();
+        sendMessage(3, triangulos[i].getBright());
+        sliderBright.setValor(triangulos[i].getBright());
+        sendMessage(4, triangulos[i].getSpeed());
+        sliderSpeed.setValor(triangulos[i].getSpeed());
         organicos[i].deselect();
       }else{
         triangulos[i].deselect();
