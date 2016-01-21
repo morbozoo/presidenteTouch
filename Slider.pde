@@ -7,13 +7,16 @@ class Slider{
 	int diameter 	= 70;
 	boolean isOver 	= false;
 	boolean isMove	= false;
+	boolean isTri	= false;
 	PImage knob;
 	PImage circulo;
+	PImage slid;
 
 
 	Slider(){}
 
-	void setup(PVector newPos, float newAncho, float newAlto){
+
+	void setup(PVector newPos, float newAncho, float newAlto, String newImg){
 		knob 		= loadImage("slider_Knob.png");
 		circulo 	= loadImage("circulo.png");
 		pos 		= newPos;
@@ -21,6 +24,7 @@ class Slider{
 		alto 		= newAlto;
 		posicion 	= pos.x + ancho/2;
         calculaValor();
+        slid 		= loadImage(newImg);
 	}
 
 	void calculaValor(){
@@ -37,7 +41,7 @@ class Slider{
 	}
 
 	void updatePos(float touch){
-		if (isOver && touch > pos.x - 15 && touch < pos.x + ancho - 15) {
+		if (isOver && touch > pos.x && touch < pos.x + ancho) {
 			posicion = touch;
 			calculaValor();
 			isMove = true;
@@ -46,22 +50,30 @@ class Slider{
 
 	void draw(){
 		stroke(255);
-		line(pos.x, pos.y + alto/2, pos.x + ancho, pos.y + alto/2);
-		if (isOver || isMove) {
-			stroke(255);
-			fill(0);
-  			ellipse(posicion + 16.5, pos.y + 19, 45, 45);
-			//image(circulo, posicion -diameter/2 + alto/2, pos.y + alto/2 - diameter/2, diameter, diameter);
+		if (!isTri) {
+			fill(150);
 		}
-		image(knob, posicion, pos.y);
-		isOver = false;
-		isMove = false;
+		line(pos.x, pos.y + alto/2 , pos.x + ancho, pos.y + alto/2);
+		if ((isOver || isMove) && isTri) {
+				stroke(255);
+				fill(0);
+  				ellipse(posicion - 2.5, pos.y + 19, 45, 45);
+			}
+			if (!isTri) {
+				tint(150, 100);
+			}
+			image(knob, posicion - 19, pos.y);
+			image(slid, pos.x + ancho/2 - 15, pos.y - 50);
+			tint(255, 255);
+			isOver = false;
+			isMove = false;	
 	}
 
 	boolean over(PVector touch){
 		float disX = posicion -diameter/2 + alto/2 - touch.x;
   		float disY = pos.y + alto/2 - touch.y;
-  		if (sqrt(sq(disX) + sq(disY)) < diameter || (touch.x > pos.x && touch.x < pos.x + ancho && touch.y > pos.y + alto/2 -diameter && touch.y < pos.y + alto/2 +diameter)) {
+  		if (isTri && (sqrt(sq(disX) + sq(disY)) < diameter/2 || 
+  			(touch.x > pos.x && touch.x < pos.x + ancho && touch.y > pos.y + alto/2 -diameter && touch.y < pos.y + alto/2 +diameter))) {
     		isOver = true;
   		} else {
     		isOver = false;

@@ -17,8 +17,7 @@ SimpleTouch touchscreen;
 
 PImage escultura;
 PImage signature;
-PImage brightness;
-PImage speed;
+PImage splash;
 
 Button[] organicos  = new Button[4];
 Button[] triangulos = new Button[4];
@@ -28,6 +27,9 @@ Slider sliderBright = new Slider();
 Slider sliderSpeed  = new Slider();
 
 boolean jetsonIsOn  = false;
+boolean isLoading   = false;
+int startTime     = 0;
+int endTime       = 0;
 
 String projectorOn  = "python on.py";
 String projectorOff = "python off.py";
@@ -50,8 +52,7 @@ void setup() {
 
   escultura     = loadImage("Escultura_on.png");
   signature     = loadImage("signature.png");
-  brightness    = loadImage("brightness.png");
-  speed         = loadImage("speed.png");
+  splash        = loadImage("loading.png");
 
   onOff.setImg("On-off.png");
   onOff.setPos(new PVector(40, 40));
@@ -66,8 +67,8 @@ void setup() {
     triangulos[i].setPos(new PVector(420 + i * (triangulos[i].sizeW + 35), 240));
   }
 
-  sliderBright.setup(new PVector(450, 80), 300, 38);
-  sliderSpeed.setup(new PVector(450, 180), 300, 30);
+  sliderBright.setup(new PVector(450, 80), 300, 38, "brightness.png");
+  sliderSpeed.setup(new PVector(450, 180), 300, 30, "speed.png");
 
   /* start oscP5, listening for incoming messages at port 12000 */
   oscP5 = new OscP5(this,12345);
@@ -90,8 +91,6 @@ void draw() {
   if (onOff.on) {
     image(escultura, 90, 10, 280, 460);
     image(signature, 490, 440);
-    image(brightness, 600, 30);
-    image(speed, 600, 130);
 
     SimpleTouchEvt touches[] = touchscreen.touches();
     for (SimpleTouchEvt touch : touches) {
@@ -127,7 +126,21 @@ void draw() {
     sliderBright.draw();
     sliderSpeed.draw();  
   } else{
-    SimpleTouchEvt touches[] = touchscreen.touches();
+    if (isLoading) {
+      image(splash, 0, 0);
+      stroke(255);
+      fill(0);
+      rect(200, 380, 400, 25);
+      fill(255);
+      rect(205, 385, ((millis() - startTime) * (390.0f/30000.0f)), 15);
+      if (millis() >= endTime) {
+        isLoading = false;
+        onOff.on = !onOff.on;
+        OscMessage myMessage = new OscMessage("on");
+        oscP5.send(myMessage, myRemoteLocation);
+      }
+    } else{
+      SimpleTouchEvt touches[] = touchscreen.touches();
     for (SimpleTouchEvt touch : touches) {
       if (onOff.over(new PVector(width * touch.x, height * touch.y)) && !onOff.locked) {
         onOff.lock();
@@ -136,7 +149,10 @@ void draw() {
     }
     onOff.update();
     onOff.draw();
+    } 
   }
+  println("bright = " + sliderBright.getValor());
+  println("speed = " + sliderSpeed.getValor());  
 }
 
 
@@ -146,6 +162,9 @@ void select(int deCual, int selected){
       if (i == selected) {
         sendMessage(0,i);
         organicos[i].select();
+        sliderSpeed.isTri = false;
+        sliderBright.isTri = true;
+        if (i == 1) {sliderSpeed.isTri = true;}
         sendMessage(3, organicos[i].getBright());
         sliderBright.setValor(organicos[i].getBright());
         sendMessage(4, organicos[i].getSpeed());
@@ -161,11 +180,27 @@ void select(int deCual, int selected){
       if (i == selected) {
         sendMessage(1,i);
         triangulos[i].select();
+        sliderSpeed.isTri = true;
+        sliderBright.isTri = true;
         sendMessage(3, triangulos[i].getBright());
         sliderBright.setValor(triangulos[i].getBright());
         sendMessage(4, triangulos[i].getSpeed());
         sliderSpeed.setValor(triangulos[i].getSpeed());
         organicos[i].deselect();
+  switch(i) {
+  case 0: 
+    sliderSpeed.setValor(28.0f);
+    break;
+  case 1: 
+    sliderSpeed.setValor(66.0f);
+    break;
+  case 2: 
+    sliderSpeed.setValor(68.0f);
+    break;
+  case 3: 
+    sliderSpeed.setValor(10.0f);
+    break;
+  }
       }else{
         triangulos[i].deselect();
         organicos[i].deselect();
@@ -188,7 +223,8 @@ void sendMessage(int deCual, float cual){
     if (cual == 2) {
       myMessage = new OscMessage("on");
       oscP5.send(myMessage, myRemoteLocation);
-      if (jetsonIsOn) {
+      loading();
+      if (jetsonIsOn && !isLoading) {
         onOff.on = !onOff.on;
         for (int i = 0; i < organicos.length; i++) {
           organicos[i].deselect();
@@ -213,6 +249,13 @@ void sendMessage(int deCual, float cual){
   }
 }
 
+void loading(){
+  isLoading = true;
+  startTime = millis();
+  //endTime   = startTime + 30000;
+  endTime   = startTime + 30;
+}
+
 /* incoming osc message are forwarded to the oscEvent method. */
 void oscEvent(OscMessage theOscMessage) {
   /* print the address pattern and the typetag of the received OscMessage */
@@ -222,47 +265,27 @@ void oscEvent(OscMessage theOscMessage) {
   }else if (theOscMessage.checkAddrPattern("imOff")==true) {
     jetsonIsOn = false;
   }
-  print("### received an osc message.");
   print(" addrpattern: "+theOscMessage.addrPattern());
   println(" typetag: "+theOscMessage.typetag());
 }
 
 void projector(String commandToRun){
     try {
-
-    // complicated!  basically, we have to load the exec command within Java's Runtime
-    // exec asks for 1. command to run, 2. null which essentially tells Processing to 
-    // inherit the environment settings from the current setup (I am a bit confused on
-    // this so it seems best to leave it), and 3. location to work (full path is best)
     Process p = Runtime.getRuntime().exec(commandToRun, null, workingDir);
-
-    // variable to check if we've received confirmation of the command
     int i = p.waitFor();
-
-    // if we have an output, print to screen
     if (i == 0) {
-
-      // BufferedReader used to get values back from the command
       BufferedReader stdInput = new BufferedReader(new InputStreamReader(p.getInputStream()));
-
-      // read the output from the command
       while ( (returnedValues = stdInput.readLine ()) != null) {
         println(returnedValues);
       }
     }
-
-    // if there are any error messages but we can still get an output, they print here
     else {
       BufferedReader stdErr = new BufferedReader(new InputStreamReader(p.getErrorStream()));
-
-      // if something is returned (ie: not null) print the result
       while ( (returnedValues = stdErr.readLine ()) != null) {
         println(returnedValues);
       }
     }
   }
-
-  // if there is an error, let us know
   catch (Exception e) {
     println("Error running command!");  
     println(e);
